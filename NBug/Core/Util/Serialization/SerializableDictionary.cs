@@ -70,24 +70,14 @@ namespace NBug.Core.Util.Serialization
             foreach (var key in this.Keys)
             {
                 writer.WriteStartElement(key.ToString().Replace(" ", ""));
-                // Check to see if we can actually serialize element
-                if (this[key].GetType().IsSerializable)
+                // if it's Serializable doesn't mean serialization will succeed (IE. GUID and SQLError types)
+                try
                 {
-                    // if it's Serializable doesn't mean serialization will succeed (IE. GUID and SQLError types)
-                    try
-                    {
-                        writer.WriteValue(this[key]);
-                    }
-                    catch (Exception)
-                    {
-                        // we're not Throwing anything here, otherwise evil thing will happen
-                        writer.WriteValue(this[key].ToString());
-                    }
+                    writer.WriteValue(this[key]);
                 }
-                else
+                catch (Exception)
                 {
-                    // If Type has custom implementation of ToString() we'll get something useful here
-                    // Otherwise we'll get Type string. (Still better than crashing).
+                    // we're not Throwing anything here, otherwise evil thing will happen
                     writer.WriteValue(this[key].ToString());
                 }
                 writer.WriteEndElement();

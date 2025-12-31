@@ -6,50 +6,55 @@
 
 namespace NBug
 {
-	using System;
-	using System.Runtime.ExceptionServices;
-	using System.Threading;
-	using System.Threading.Tasks;
-	using System.Windows.Forms;
-	using System.Windows.Threading;
-
 	using NBug.Core.Reporting;
-	using NBug.Core.UI;
 	using NBug.Core.Util;
 	using NBug.Core.Util.Logging;
-
-	using Dispatcher = NBug.Core.Submission.Dispatcher;
+	using System;
+    using System.IO;
+	using System.Runtime.ExceptionServices;
+    using System.Runtime.InteropServices;
+	using System.Threading;
+	using System.Threading.Tasks;
+	using System.Windows.Threading;
 
 	public static class Handler
 	{
-		static Handler()
-		{
-			// Submit any queued reports on a seperate thread asynchronously, while exceptions handlers are being set);
-			if (!Settings.SkipDispatching)
-			{
-				new Dispatcher();
-			}
-		}
+        // Using delegates to make sure that static constructor gets called on delegate access
 
-		// Using delegates to make sure that static constructor gets called on delegate access
+        private static IntPtr _vectoredHandlerHandle;
+        private delegate int VectoredExceptionHandlerDelegate(IntPtr exceptionPointers);
+        private static readonly VectoredExceptionHandlerDelegate _vectoredHandlerDelegate = VectoredHandler;
 
-		/// <summary>
-		/// Used for handling WPF exceptions bound to the UI thread.
-		/// Handles the <see cref="Application.DispatcherUnhandledException"/> events in <see cref="System.Windows"/> namespace.
-		/// </summary>
-		public static DispatcherUnhandledExceptionEventHandler DispatcherUnhandledException
+        static Handler()
+        {
+            // Register a native vectored exception handler to attempt to create a minidump
+            // when a corrupted process state (native) exception occurs. This is required
+            // because the managed attribute HandleProcessCorruptedStateExceptions is ignored
+            // on modern .NET runtimes.
+            try
+            {
+                if (Settings.HandleProcessCorruptedStateExceptions)
+                {
+                    _vectoredHandlerHandle = AddVectoredExceptionHandler(1, _vectoredHandlerDelegate);
+                    Logger.Trace($"Vectored exception handler registered: {_vectoredHandlerHandle}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Trace($"Failed to register vectored exception handler: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Used for handling WPF exceptions bound to the UI thread.
+        /// Handles the <see cref="Application.DispatcherUnhandledException"/> events in <see cref="System.Windows"/> namespace.
+        /// </summary>
+        public static DispatcherUnhandledExceptionEventHandler DispatcherUnhandledException
 		{
 			get
 			{
-				if (Settings.HandleProcessCorruptedStateExceptions)
-				{
-					return CorruptDispatcherUnhandledExceptionHandler;
-				}
-				else
-				{
-					return DispatcherUnhandledExceptionHandler;
-				}
-			}
+                return DispatcherUnhandledExceptionHandler;
+            }
 		}
 
 		/// <summary>
@@ -60,15 +65,8 @@ namespace NBug
 		{
 			get
 			{
-				if (Settings.HandleProcessCorruptedStateExceptions)
-				{
-					return CorruptThreadExceptionHandler;
-				}
-				else
-				{
-					return ThreadExceptionHandler;
-				}
-			}
+                return ThreadExceptionHandler;
+            }
 		}
 
 		/// <summary>
@@ -79,15 +77,8 @@ namespace NBug
 		{
 			get
 			{
-				if (Settings.HandleProcessCorruptedStateExceptions)
-				{
-					return CorruptUnhandledExceptionHandler;
-				}
-				else
-				{
-					return UnhandledExceptionHandler;
-				}
-			}
+                return UnhandledExceptionHandler;
+            }
 		}
 
 		/// <summary>
@@ -98,39 +89,8 @@ namespace NBug
 		{
 			get
 			{
-				if (Settings.HandleProcessCorruptedStateExceptions)
-				{
-					return CorruptUnobservedTaskExceptionHandler;
-				}
-				else
-				{
-					return UnobservedTaskExceptionHandler;
-				}
-			}
-		}
-
-		[HandleProcessCorruptedStateExceptions]
-		private static void CorruptDispatcherUnhandledExceptionHandler(object sender, DispatcherUnhandledExceptionEventArgs e)
-		{
-			DispatcherUnhandledExceptionHandler(sender, e);
-		}
-
-		[HandleProcessCorruptedStateExceptions]
-		private static void CorruptThreadExceptionHandler(object sender, ThreadExceptionEventArgs e)
-		{
-			ThreadExceptionHandler(sender, e);
-		}
-
-		[HandleProcessCorruptedStateExceptions]
-		private static void CorruptUnhandledExceptionHandler(object sender, UnhandledExceptionEventArgs e)
-		{
-			UnhandledExceptionHandler(sender, e);
-		}
-
-		[HandleProcessCorruptedStateExceptions]
-		private static void CorruptUnobservedTaskExceptionHandler(object sender, UnobservedTaskExceptionEventArgs e)
-		{
-			UnobservedTaskExceptionHandler(sender, e);
+                return UnobservedTaskExceptionHandler;
+            }
 		}
 
 		/// <summary>
@@ -144,13 +104,10 @@ namespace NBug
 			if (Settings.HandleExceptions)
 			{
 				Logger.Trace("Starting to handle a System.Windows.Application.DispatcherUnhandledException.");
-				var executionFlow = new BugReport().Report(e.Exception, ExceptionThread.UI_WPF);
+				new BugReport().Report(e.Exception, ExceptionThread.UI_WPF);
                 e.Handled = true;
-                if (executionFlow == ExecutionFlow.BreakExecution)
-				{					
-					Environment.Exit(0);
-				}
-			}
+                Environment.Exit(0);
+            }
 		}
 
 		/// <summary>
@@ -166,12 +123,9 @@ namespace NBug
 				Logger.Trace("Starting to handle a System.Windows.Forms.Application.ThreadException.");
 
 				// WinForms UI thread exceptions do not propagate to more general handlers unless: Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
-				var executionFlow = new BugReport().Report(e.Exception, ExceptionThread.UI_WinForms);
-				if (executionFlow == ExecutionFlow.BreakExecution)
-				{
-					Environment.Exit(0);
-				}
-			}
+				new BugReport().Report(e.Exception, ExceptionThread.UI_WinForms);
+                Environment.Exit(0);
+            }
 		}
 
 		/// <summary>
@@ -185,12 +139,9 @@ namespace NBug
 			if (Settings.HandleExceptions)
 			{
 				Logger.Trace("Starting to handle a System.AppDomain.UnhandledException.");
-				var executionFlow = new BugReport().Report((Exception)e.ExceptionObject, ExceptionThread.Main);
-				if (executionFlow == ExecutionFlow.BreakExecution)
-				{
-					Environment.Exit(0);
-				}
-			}
+				new BugReport().Report((Exception)e.ExceptionObject, ExceptionThread.Main);
+                Environment.Exit(0);
+            }
 		}
 
 		/// <summary>
@@ -204,17 +155,127 @@ namespace NBug
 			if (Settings.HandleExceptions)
 			{
 				Logger.Trace("Starting to handle a System.Threading.Tasks.UnobservedTaskException.");
-				var executionFlow = new BugReport().Report(e.Exception, ExceptionThread.Task);
-				if (executionFlow == ExecutionFlow.BreakExecution)
-				{
-					e.SetObserved();
-					Environment.Exit(0);
-				}
-				else if (executionFlow == ExecutionFlow.ContinueExecution)
-				{
-					e.SetObserved();
-				}
-			}
+				new BugReport().Report(e.Exception, ExceptionThread.Task);
+                e.SetObserved();
+                Environment.Exit(0);
+            }
 		}
-	}
+
+        // Vectored exception handler and minidump writer
+
+        private static int VectoredHandler(IntPtr exceptionPointers)
+        {
+            try
+            {
+                // Attempt to write a minidump from native exception pointers
+                WriteMiniDump(exceptionPointers);
+            }
+            catch (Exception ex)
+            {
+                // Never throw from a vectored exception handler
+                Logger.Trace($"MiniDump write failed: {ex}");
+            }
+
+            // Let other handlers / the OS continue processing (EXCEPTION_CONTINUE_SEARCH)
+            return 0;
+        }
+
+        private static void WriteMiniDump(IntPtr exceptionPointers)
+        {
+			var filename = $"nbug_cse_{DateTime.UtcNow.ToFileTime()}.dmp";
+			var path = string.Empty;
+            if (Settings.StoragePath == Enums.StoragePath.WindowsTemp)
+            {
+                var directoryPath = Path.Combine(new[] { Path.GetTempPath(), Settings.EntryAssembly.GetName().Name });
+
+                if (Directory.Exists(directoryPath) == false)
+                {
+                    Directory.CreateDirectory(directoryPath);
+                }
+
+                path = Path.Combine(directoryPath, filename);
+                Logger.Trace("Creating cse dumpfile to Windows temp path: " + path);
+            }
+            else if (Settings.StoragePath == Enums.StoragePath.CurrentDirectory)
+            {
+                path = Path.Combine(Settings.NBugDirectory, filename);
+                Logger.Trace("Creating cse dumpfile to entry assembly directory path: " + path);
+            }
+            else if (Settings.StoragePath == Enums.StoragePath.IsolatedStorage)
+            {
+                path = filename;
+                Logger.Trace("Creating cse dumpfile to isolated storage path: [Isolated Storage Directory]\\" + path);
+            }
+            else if (Settings.StoragePath == Enums.StoragePath.Custom)
+            {
+                var directoryPath = Path.GetFullPath(Settings.StoragePath); // In case this is a relative path
+
+                if (Directory.Exists(directoryPath) == false)
+                {
+                    Directory.CreateDirectory(directoryPath);
+                }
+
+                path = Path.Combine(directoryPath, filename);
+                Logger.Trace("Creating cse dumpfile to custom path: " + path);
+            }
+
+            try
+            {
+                using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                var hFile = fs.SafeFileHandle.DangerousGetHandle();
+
+                var info = new MINIDUMP_EXCEPTION_INFORMATION
+                {
+                    ThreadId = GetCurrentThreadId(),
+                    ExceptionPointers = exceptionPointers,
+                    ClientPointers = 1
+                };
+
+                var ok = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MINIDUMP_TYPE.MiniDumpWithFullMemory, ref info, IntPtr.Zero, IntPtr.Zero);
+                Logger.Trace($"MiniDumpWriteDump returned: {ok}. Path: {path}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Trace($"Failed to create minidump file '{path}': {ex}");
+            }
+        }
+
+        #region Native interop
+
+        private struct MINIDUMP_EXCEPTION_INFORMATION
+        {
+            public uint ThreadId;
+            public IntPtr ExceptionPointers;
+            public int ClientPointers;
+        }
+
+        [Flags]
+        private enum MINIDUMP_TYPE : uint
+        {
+            MiniDumpNormal = 0x00000000,
+            MiniDumpWithDataSegs = 0x00000001,
+            MiniDumpWithFullMemory = 0x00000002,
+            // other flags can be added if needed
+        }
+
+        [DllImport("dbghelp.dll", SetLastError = true)]
+        private static extern bool MiniDumpWriteDump(IntPtr hProcess, uint processId, IntPtr hFile, MINIDUMP_TYPE dumpType, ref MINIDUMP_EXCEPTION_INFORMATION expParam, IntPtr userStreamParam, IntPtr callbackParam);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr AddVectoredExceptionHandler(uint first, VectoredExceptionHandlerDelegate handler);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint RemoveVectoredExceptionHandler(IntPtr handle);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentProcessId();
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetCurrentProcess();
+
+        #endregion
+    }
 }

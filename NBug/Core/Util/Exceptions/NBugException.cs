@@ -25,10 +25,5 @@ namespace NBug.Core.Util.Exceptions
 			: base(message, inner)
 		{
 		}
-
-		protected NBugException(SerializationInfo info, StreamingContext context)
-			: base(info, context)
-		{
-		}
 	}
 }

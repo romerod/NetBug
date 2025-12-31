@@ -42,12 +42,6 @@ namespace NBug.Core.Reporting.MiniDump
 		private static readonly Action<Action, Func<Exception, bool>, Action<Exception>> filter = GenerateFilter();
 
 		/// <summary>
-		/// Set to true to write the generated assembly to disk for debugging purposes (eg. to run peverify
-		/// and ildasm on in the case of bad codegen).
-		/// </summary>
-		private static bool writeGeneratedAssemblyToDisk = false;
-
-		/// <summary>
 		/// Execute the body which is not expected to ever throw any exceptions.
 		/// If an exception does escape body, stop in the debugger if one is attached and then fail-fast.
 		/// </summary>
@@ -274,21 +268,14 @@ namespace NBug.Core.Reporting.MiniDump
 		{
 			// Create a dynamic assembly with reflection emit
 			var name = new AssemblyName("DynamicFilter");
-			var assembly = AppDomain.CurrentDomain.DefineDynamicAssembly(
-				name, writeGeneratedAssemblyToDisk ? AssemblyBuilderAccess.RunAndSave : AssemblyBuilderAccess.Run);
+			var assembly = AssemblyBuilder.DefineDynamicAssembly(
+				name, AssemblyBuilderAccess.Run);
 			ModuleBuilder module;
-			if (writeGeneratedAssemblyToDisk)
-			{
-				module = assembly.DefineDynamicModule("DynamicFilter", "DynamicFilter.dll");
-			}
-			else
-			{
-				module = assembly.DefineDynamicModule("DynamicFilter");
-			}
+            module = assembly.DefineDynamicModule("DynamicFilter");
 
-			// Add an assembly attribute that tells the CLR to wrap non-CLS-compliant exceptions in a RuntimeWrappedException object
-			// (so the cast to Exception in the code will always succeed).  C# and VB always do this, C++/CLI doesn't.
-			assembly.SetCustomAttribute(
+            // Add an assembly attribute that tells the CLR to wrap non-CLS-compliant exceptions in a RuntimeWrappedException object
+            // (so the cast to Exception in the code will always succeed).  C# and VB always do this, C++/CLI doesn't.
+            assembly.SetCustomAttribute(
 				new CustomAttributeBuilder(
 					typeof(RuntimeCompatibilityAttribute).GetConstructor(new Type[] { }), 
 					new object[] { }, 
@@ -334,10 +321,6 @@ namespace NBug.Core.Reporting.MiniDump
 			il.Emit(OpCodes.Ret);
 
 			var bakedType = type.CreateType();
-			if (writeGeneratedAssemblyToDisk)
-			{
-				assembly.Save("DynamicFilter.dll");
-			}
 
 			// Construct a delegate to the filter function and return it
 			var bakedMeth = bakedType.GetMethod("InvokeWithFilter");

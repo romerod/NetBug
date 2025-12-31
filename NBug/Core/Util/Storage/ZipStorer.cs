@@ -19,12 +19,12 @@ namespace NBug.Core.Util.Storage
 		/// <summary>
 		///   True if UTF8 encoding for filename and comments, false if default (CP 437)
 		/// </summary>
-		public bool EncodeUTF8;
+		public bool EncodeUTF8 = false;
 
 		/// <summary>
 		///   Force deflate algotithm even if it inflates the stored file. Off by default.
 		/// </summary>
-		public bool ForceDeflating;
+		public bool ForceDeflating = false;
 
 		/// <summary>
 		///   The crc table.
@@ -507,7 +507,7 @@ namespace NBug.Core.Util.Storage
 			// check signature
 			var signature = new byte[4];
 			this.ZipFileStream.Seek(_zfe.HeaderOffset, SeekOrigin.Begin);
-			this.ZipFileStream.Read(signature, 0, 4);
+			this.ZipFileStream.ReadExactly(signature, 0, 4);
 			if (BitConverter.ToUInt32(signature, 0) != 0x04034b50)
 			{
 				return false;
@@ -689,9 +689,9 @@ namespace NBug.Core.Util.Storage
 			var buffer = new byte[2];
 
 			this.ZipFileStream.Seek(_headerOffset + 26, SeekOrigin.Begin);
-			this.ZipFileStream.Read(buffer, 0, 2);
+			this.ZipFileStream.ReadExactly(buffer, 0, 2);
 			ushort filenameSize = BitConverter.ToUInt16(buffer, 0);
-			this.ZipFileStream.Read(buffer, 0, 2);
+			this.ZipFileStream.ReadExactly(buffer, 0, 2);
 			ushort extraSize = BitConverter.ToUInt16(buffer, 0);
 
 			return (uint)(30 + filenameSize + extraSize + _headerOffset);
@@ -774,7 +774,7 @@ namespace NBug.Core.Util.Storage
 						this.ExistingFiles = entries;
 						this.CentralDirImage = new byte[centralSize];
 						this.ZipFileStream.Seek(centralDirOffset, SeekOrigin.Begin);
-						this.ZipFileStream.Read(this.CentralDirImage, 0, centralSize);
+						this.ZipFileStream.ReadExactly(this.CentralDirImage, 0, centralSize);
 
 						// Leave the pointer at the begining of central dir, to append new files
 						this.ZipFileStream.Seek(centralDirOffset, SeekOrigin.Begin);

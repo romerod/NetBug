@@ -12,7 +12,6 @@ namespace NBug.Core.Util.Logging
     using System.IO;
     using System.Linq.Expressions;
 
-    using NBug.Core.UI.Developer;
     using NBug.Core.Util.Exceptions;
     using NBug.Enums;
 
@@ -59,14 +58,6 @@ namespace NBug.Core.Util.Logging
         {
             Write(message, LoggerCategory.NBugError);
 
-            if (Settings.DisplayDeveloperUI)
-            {
-                using (var viewer = new InternalExceptionViewer())
-                {
-                    viewer.ShowDialog(new NBugRuntimeException(message));
-                }
-            }
-
             if (Settings.ThrowExceptions)
             {
                 throw new NBugRuntimeException(message);
@@ -78,14 +69,6 @@ namespace NBug.Core.Util.Logging
         {
             Write(message + Environment.NewLine + "Exception: " + exception, LoggerCategory.NBugError);
 
-            if (Settings.DisplayDeveloperUI)
-            {
-                using (var viewer = new InternalExceptionViewer())
-                {
-                    viewer.ShowDialog(exception);
-                }
-            }
-
             if (Settings.ThrowExceptions)
             {
                 throw new NBugRuntimeException(message, exception);
@@ -96,14 +79,6 @@ namespace NBug.Core.Util.Logging
         internal static void Error<T>(Expression<Func<T>> propertyExpression, string message)
         {
             Write(message + " Misconfigured Property: " + ((MemberExpression)propertyExpression.Body).Member.Name, LoggerCategory.NBugError);
-
-            if (Settings.DisplayDeveloperUI)
-            {
-                using (var viewer = new InternalExceptionViewer())
-                {
-                    viewer.ShowDialog(NBugConfigurationException.Create(propertyExpression, message));
-                }
-            }
 
             if (Settings.ThrowExceptions)
             {
@@ -133,11 +108,6 @@ namespace NBug.Core.Util.Logging
         private static void Write(string message, LoggerCategory category)
         {
             System.Diagnostics.Trace.Write(message + Environment.NewLine, category.ToString());
-
-            if (Settings.DisplayDeveloperUI)
-            {
-                // InternalLogViewer.LogEntry(message, category);
-            }
 
             var handler = LogWritten;
             if (handler != null)
