@@ -27,7 +27,7 @@ namespace NBug
 		/// <param name="body">Body of code to be executed.</param>
 		public static void Filter(Action body)
 		{
-			ExceptionFilters.Filter(body, ex => new BugReport().Report(ex, ExceptionThread.Main));
+			ExceptionFilters.Filter(body, ex => new BugReport().Report(ex));
 		}
 
 		/// <summary>
@@ -45,7 +45,7 @@ namespace NBug
 				ex =>
 					{
 						// Filtering the exception
-						new BugReport().Report(ex, ExceptionThread.Main);
+						new BugReport().Report(ex);
 						return true; // Yes proceed to handling the exception
 					}, 
 				ex =>
@@ -65,7 +65,7 @@ namespace NBug
 		public static void Report(Exception exception)
 		{
 			// Below never exits application by itself (by design) so execution of the application continues normally
-			new BugReport().Report(exception, ExceptionThread.Main);
+			new BugReport().Report(exception);
 		}
 	}
 }

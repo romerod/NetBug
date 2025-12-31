@@ -104,7 +104,7 @@ namespace NBug
 			if (Settings.HandleExceptions)
 			{
 				Logger.Trace("Starting to handle a System.Windows.Application.DispatcherUnhandledException.");
-				new BugReport().Report(e.Exception, ExceptionThread.UI_WPF);
+				new BugReport().Report(e.Exception);
                 e.Handled = true;
                 Environment.Exit(0);
             }
@@ -123,7 +123,7 @@ namespace NBug
 				Logger.Trace("Starting to handle a System.Windows.Forms.Application.ThreadException.");
 
 				// WinForms UI thread exceptions do not propagate to more general handlers unless: Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
-				new BugReport().Report(e.Exception, ExceptionThread.UI_WinForms);
+				new BugReport().Report(e.Exception);
                 Environment.Exit(0);
             }
 		}
@@ -139,7 +139,7 @@ namespace NBug
 			if (Settings.HandleExceptions)
 			{
 				Logger.Trace("Starting to handle a System.AppDomain.UnhandledException.");
-				new BugReport().Report((Exception)e.ExceptionObject, ExceptionThread.Main);
+				new BugReport().Report((Exception)e.ExceptionObject);
                 Environment.Exit(0);
             }
 		}
@@ -155,7 +155,7 @@ namespace NBug
 			if (Settings.HandleExceptions)
 			{
 				Logger.Trace("Starting to handle a System.Threading.Tasks.UnobservedTaskException.");
-				new BugReport().Report(e.Exception, ExceptionThread.Task);
+				new BugReport().Report(e.Exception);
                 e.SetObserved();
                 Environment.Exit(0);
             }

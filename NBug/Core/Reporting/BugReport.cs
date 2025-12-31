@@ -25,7 +25,7 @@ namespace NBug.Core.Reporting
 		/// </summary>
 		internal static event Action<Exception, Report> ProcessingException;
 
-		internal bool Report(Exception exception, ExceptionThread exceptionThread)
+		internal bool Report(Exception exception)
 		{
 			try
 			{
