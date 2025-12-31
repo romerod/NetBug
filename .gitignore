@@ -109,3 +109,5 @@ packages/
 
 # MonoDevelop
 NBug.userprefs
+/.vs
+/.github/upgrades
