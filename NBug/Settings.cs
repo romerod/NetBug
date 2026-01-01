@@ -242,7 +242,6 @@ namespace NBug
 			MiniDumpType = Properties.Settings.Default.MiniDumpType;
 			WriteLogToDisk = Properties.Settings.Default.WriteLogToDisk;
 			ExitApplicationImmediately = Properties.Settings.Default.ExitApplicationImmediately;
-			HandleProcessCorruptedStateExceptions = Properties.Settings.Default.HandleProcessCorruptedStateExceptions;
 			ReleaseMode = Properties.Settings.Default.ReleaseMode;
 		}
 	}
