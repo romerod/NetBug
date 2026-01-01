@@ -114,12 +114,6 @@ namespace NBug
 		public static bool ExitApplicationImmediately { get; set; }
 
 		/// <summary>
-		/// Gets or sets a value indicating whether to handle exceptions even in a corrupted process thought the 'HandleProcessCorruptedStateExceptions'
-		/// flag. The default value for this is false since generating bug reports for a corrupted process may not be successful so use with caution.
-		/// </summary>
-		public static bool HandleProcessCorruptedStateExceptions { get; set; }
-
-		/// <summary>
 		/// Gets or sets the memory dump type. Memory dumps are quite useful for replicating the exact conditions that the application crashed (i.e.
 		/// getting the stack trace, local variables, etc.) but they take up a great deal of space, so choose wisely. Options are:
 		/// None: No memory dump is generated.
