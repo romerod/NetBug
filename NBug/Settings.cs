@@ -23,6 +23,7 @@ namespace NBug
 
 	using NBug.Core.Reporting;
 	using NBug.Core.Reporting.Info;
+	using NBug.Core.Submission;
 	using NBug.Core.Util;
 	using NBug.Core.Util.Exceptions;
 	using NBug.Core.Util.Logging;
@@ -35,6 +36,7 @@ namespace NBug
 	public static class Settings
 	{
 		private static bool releaseMode; // False by default
+		private static int sleepBeforeSend = 5; // Default: wait 5 seconds before sending queued reports
 
 		static Settings()
 		{
@@ -169,6 +171,39 @@ namespace NBug
 		/// the log with any trace listener. Default value is true.
 		/// </summary>
 		public static bool WriteLogToDisk { get; set; }
+
+		/// <summary>
+		/// Gets or sets the delay in seconds before attempting to send queued bug reports on application startup.
+		/// Default value is 5 seconds.
+		/// </summary>
+		public static int SleepBeforeSend
+		{
+			get
+			{
+				return sleepBeforeSend;
+			}
+
+			set
+			{
+				sleepBeforeSend = value;
+			}
+		}
+
+		/// <summary>
+		/// Registers one or more bug report submission destinations and starts the dispatcher that processes
+		/// any queued reports from previous runs. Call this once during application startup, after setting
+		/// <see cref="ReleaseMode"/> and any other options.
+		/// </summary>
+		/// <param name="protocols">One or more protocol implementations to send reports to.</param>
+		public static void StartSendingReportsInBackground(params IProtocol[] protocols)
+		{
+			if (protocols == null || protocols.Length == 0)
+			{
+				return;
+			}
+
+			_ = new Dispatcher(protocols);
+		}
 
 		/// <summary>
 		/// Gets or sets the entry assembly which hosts the NBug assembly. It is used for retrieving the version and the full name
