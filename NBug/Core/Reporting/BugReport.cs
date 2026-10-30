@@ -23,7 +23,7 @@ namespace NBug.Core.Reporting
 		/// First parameters is the serializable exception object that is about to be processed, second parameter is any custom data
 		/// object that the user wants to include in the report.
 		/// </summary>
-		internal static event Action<Exception, Report> ProcessingException;
+        internal static event ProcessingExceptionEventHandler ProcessingException;
 
 		internal bool Report(Exception exception)
 		{
@@ -32,6 +32,7 @@ namespace NBug.Core.Reporting
 				Logger.Trace("Starting to generate a bug report for the exception.");
 				var serializableException = new SerializableException(exception);
 				var report = new Report(serializableException);
+                var saveReport = true;
 
 				var handler = ProcessingException;
 				if (handler != null)
@@ -39,10 +40,13 @@ namespace NBug.Core.Reporting
 					Logger.Trace("Notifying the user before handling the exception.");
 
 					// Allowing user to add any custom information to the report
-					handler(exception, report);
+                    handler(exception, report, ref saveReport);
 				}
 
-				this.CreateReportZip(serializableException, report);
+                if (saveReport)
+                {
+                    this.CreateReportZip(serializableException, report);
+                }
 
 				return true;
 			}

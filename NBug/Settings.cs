@@ -33,6 +33,8 @@ namespace NBug
 	using StoragePath = NBug.Core.Util.Storage.StoragePath;
     using NBug.Core.Util.Storage;
 
+	public delegate void ProcessingExceptionEventHandler(Exception exception, Report report, ref bool saveReport);
+
 	public static class Settings
 	{
 		private static bool releaseMode; // False by default
@@ -79,16 +81,18 @@ namespace NBug
 		/// all those new information in a user defined type and pass it here. You can also pass in any system type that is serializable. Make sure
 		/// that passed objects are XML serializable or the information will not appear in the report. See the sample usage for proper usage if this
 		/// event.
+		/// -Third parameter: <see cref="System.Boolean"/>: Set to false to prevent the report ZIP from being created for this exception.
 		/// </summary>
 		/// <example>A sample code demonstrating the proper use of this event:
 		/// <code>
-		/// NBug.Settings.ProcessingException += (exception, report) =>
+		/// NBug.Settings.ProcessingException += (Exception exception, Report report, ref bool SaveReport) =>
 		///	{
 		///		report.CustomInfo = new MyCusomSystemInformation { UtcTime = DateTime.UtcNow, AdditionalData = RubyExceptionData.GetInstance(exception) };
+		///		SaveReport = false;
 		///	};
 		/// </code>
 		/// </example>
-		public static event Action<Exception, Report> ProcessingException
+		public static event ProcessingExceptionEventHandler ProcessingException
 		{
 			add
 			{
